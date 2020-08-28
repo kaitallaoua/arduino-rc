@@ -93,9 +93,6 @@
 //            an example sketch to check the operation of the failsafe, and for printing the calibrated channels to serial:
 
 #include <Sabertooth.h>
-#include <Servo.h>
-
-Servo fpvServo;
 
 unsigned long now;                        // timing variables to update data at a regular interval                  
 unsigned long rc_update;
@@ -104,47 +101,45 @@ float RC_in[channels];                    // an array to store the calibrated in
 
 unsigned int x_dir = 5; // channel five (AILE)
 unsigned int y_dir = 4; // channel four (ELEV)
-unsigned int arm = 3; // channel three (RUDD)
 unsigned int gear = 2; // channel two (GEAR)
 
 float x_speed;
 float y_speed;
-float arm_speed;
 float gearPos;
-float servoPos;
 
 unsigned int l_data;
 unsigned int r_data;
+unsigned int brightness;
 
 float speeds[2] = {0.0, 0.0};
 
-Sabertooth STs[2] = { Sabertooth(128), Sabertooth(129)};
-Sabertooth armST(130);
+Sabertooth STs[3] = { Sabertooth(128), Sabertooth(129), Sabertooth(130)};
+//Sabertooth ST3(130);
 
 void setup()  {
     setup_pwmRead();                      
     SabertoothTXPinSerial.begin(115200);
-    fpvServo.attach(9);  // attaches the servo on pin 9 to the servo object
     //Serial.begin(115200);
 }
 
 void loop()  {
+    
     now = millis();
     
-    if(RC_avail() || now - rc_update > 25){   // if RC data is available or 25ms has passed since last update (adjust to suit frame rate of receiver)
+    if(RC_avail() || now - rc_update > 22){   // if RC data is available or 25ms has passed since last update (adjust to suit frame rate of receiver)
       
       rc_update = now;                           
 
       // Main drive control
       x_speed = RC_decode(x_dir);
       y_speed = RC_decode(y_dir);
-      arm_speed = RC_decode(arm);
       gearPos = RC_decode(gear);
 
       XYtoLR(x_speed, y_speed, speeds);
 
       l_data = SPEEDtoDATA(speeds[0]);
       r_data = SPEEDtoDATA(speeds[1]);
+      brightness = LIGHTtoDATA(gearPos);
 
       
       driveFL(l_data, true);
@@ -152,32 +147,12 @@ void loop()  {
       driveRL(l_data, false);
       driveRR(r_data, true);
 
-      //Serial.println(gearPos);
-      //Serial.println(arm_speed);
-    
-      if (gearPos > 0) { // gear is on/fliped up
-        if (arm_speed > 0) {
-          servoPos = 90 + arm_speed * 90;
-        } else {
-          servoPos = 90 - abs(arm_speed) * 90;
-        }
-        //Serial.println(servoPos);
-        
-        fpvServo.write(servoPos - 23.0);
-      } else {
-        driveARM(SPEEDtoDATA(arm_speed), false); // drive the arm with the rudd
-      }
+      turnOnLedLights(brightness);
+  }
 
-     /*
-      driveFL(0, true);
-      driveFR(0, false);
-      driveRL(0, false);
-      driveRR(0, true);
-*/
-      
-    }
 }
-              
+
+         
 // EXAMPLE USE OF GENERIC PWM FUNCTIONS:
   /*
  // Print the pulse width of channel 1 to the serial monitor. 
@@ -193,6 +168,7 @@ void loop()  {
  
  if (PWM_read(1)){                                      // if a new pulse is detected on channel 1
    Serial.print(PWM_period(),0);Serial.print("uS ");     
+   
    Serial.print(PWM_freq());Serial.println("Hz");
  }
 
@@ -547,6 +523,7 @@ float PWM_duty(){
 
 //--------------------------------------------------------------------
 
+
 float XYtoLR(float x, float y, float* arr) {
   
   float v = ((1 - (abs(x))) * y) + y;
@@ -566,29 +543,39 @@ unsigned int SPEEDtoDATA (float s) {
 void driveFL (unsigned int data, bool invert) {
   if (invert) data = data * -1;
   
-  STs[1].motor(2, data);
+  STs[1].motor(2, dataFilter(data));
 }
 
 void driveFR (unsigned int data, bool invert) {
   if (invert) data = data * -1;
   
-  STs[1].motor(1, data);
+  STs[1].motor(1, dataFilter(data));
 }
 
 void driveRL (unsigned int data, bool invert) {
   if (invert) data = data * -1;
   
-  STs[0].motor(2, data);
+  STs[0].motor(2, dataFilter(data));
 }
 
 void driveRR (unsigned int data, bool invert) {
   if (invert) data = data * -1;
   
-  STs[0].motor(1, data);
+  STs[0].motor(1, dataFilter(data));
 }
 
-void driveARM (unsigned int data, bool invert) {
-  if (invert) data = data * -1;
+unsigned int LIGHTtoDATA(float brightness) {
+  return (unsigned int) abs(brightness) * 127;
+}
 
-  armST.motor(1, data);
+void turnOnLedLights(unsigned int data) {
+  STs[2].motor(1, data);
+}
+
+unsigned int dataFilter(unsigned int data) {
+  if (! abs(data) > 5) {
+    return 0; // dont move / ignore small values
+  } else {
+    return data;
+  }
 }
