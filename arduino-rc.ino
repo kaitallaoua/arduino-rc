@@ -94,6 +94,21 @@
 
 #include <Sabertooth.h>
 
+int in1 = A0;
+int in2 = A1;
+int in3 = A2;
+int in4 = A3;
+
+int ena = 10;
+int enb = 9;
+int m1 = 13;
+int m2 = 12;
+int m3 = 11;
+int m4 = 8;
+
+
+
+
 unsigned long now;                        // timing variables to update data at a regular interval                  
 unsigned long rc_update;
 const int channels = 6;                   // specify the number of receiver channels
@@ -102,24 +117,49 @@ float RC_in[channels];                    // an array to store the calibrated in
 unsigned int x_dir = 5; // channel five (AILE)
 unsigned int y_dir = 4; // channel four (ELEV)
 unsigned int gear = 2; // channel two (GEAR)
+unsigned int rudd = 3;
 
 float x_speed;
 float y_speed;
 float gearPos;
+float armSpeed;
+
+bool turnOnLights;
 
 unsigned int l_data;
 unsigned int r_data;
-unsigned int brightness;
 
 float speeds[2] = {0.0, 0.0};
 
-Sabertooth STs[3] = { Sabertooth(128), Sabertooth(129), Sabertooth(130)};
-//Sabertooth ST3(130);
+Sabertooth STs[2] = { Sabertooth(128), Sabertooth(129)};
 
 void setup()  {
-    setup_pwmRead();                      
-    SabertoothTXPinSerial.begin(115200);
-    //Serial.begin(115200);
+  setup_pwmRead();                      
+  SabertoothTXPinSerial.begin(115200);
+  //Serial.begin(115200);
+
+  
+  pinMode(in1, OUTPUT);
+  
+  pinMode(in2, OUTPUT);
+  
+  pinMode(in3, OUTPUT);
+  
+  pinMode(in4, OUTPUT);
+
+  pinMode(ena, OUTPUT);
+  pinMode(enb, OUTPUT);
+  pinMode(m1, OUTPUT);
+  pinMode(m2, OUTPUT);
+  pinMode(m3, OUTPUT);
+  pinMode(m4, OUTPUT);
+
+
+  // initalize relays by leaving them off, put at end of setup() for it to work, not after pinMode()
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, HIGH);
 }
 
 void loop()  {
@@ -134,20 +174,23 @@ void loop()  {
       x_speed = RC_decode(x_dir);
       y_speed = RC_decode(y_dir);
       gearPos = RC_decode(gear);
+      armSpeed = RC_decode(rudd);
 
       XYtoLR(x_speed, y_speed, speeds);
 
       l_data = SPEEDtoDATA(speeds[0]);
       r_data = SPEEDtoDATA(speeds[1]);
-      brightness = LIGHTtoDATA(gearPos);
-
       
+      turnOnLights = abs(gearPos) > 0.1;
+
       driveFL(l_data, true);
       driveFR(r_data, false);
       driveRL(l_data, false);
       driveRR(r_data, true);
 
-      turnOnLedLights(brightness);
+      driveHBridge(armSpeed, 0.0, 0.1, 0.0);
+
+      turnOnLedLights(turnOnLights);
   }
 
 }
@@ -191,8 +234,7 @@ int RC_inputs = 0;                // The number of pins in pwmPIN that are conne
 // The arrays should be modified in order to calibrate the min, middle and max pulse durations to suit your transmitter (use max rates to get the best resolution). 
 // FYI: the function print_PWM() will print the raw pulse width data for all the RC channels to the serial port.
 // if the RC_min[], RC_mid[], RC_max[] are empty or have missing data the calibration will default to min 1000us, mid 1500us and max 2000us.
-
-//SANWA 6CH 40MHz with corona RP6D1  
+  
 //                AUX1    GEAR    RUDD    ELEV    AILE    THRO
 int RC_min[6] = { 1100,   1100,   1100,   1100,   1100,   1100};
 int RC_mid[6] = { 1500,   1500,   1500,   1500,   1500,   1500};
@@ -564,12 +606,8 @@ void driveRR (unsigned int data, bool invert) {
   STs[0].motor(1, dataFilter(data));
 }
 
-unsigned int LIGHTtoDATA(float brightness) {
-  return (unsigned int) abs(brightness) * 127;
-}
-
-void turnOnLedLights(unsigned int data) {
-  STs[2].motor(1, data);
+void turnOnLedLights(bool turnOnLights) {
+  relay(4, turnOnLights); // hardcoded value for the desired relay of 4
 }
 
 unsigned int dataFilter(unsigned int data) {
@@ -577,5 +615,70 @@ unsigned int dataFilter(unsigned int data) {
     return 0; // dont move / ignore small values
   } else {
     return data;
+  }
+}
+
+void driveHBridge(float speed1, float speed2, float m1DeadBand, float m2DeadBand) {
+// --------------First Side of H Bridge (ena, in1 and in2)------------------
+  if (speed1 > abs(m1DeadBand)) {
+    digitalWrite(m1, HIGH);
+    digitalWrite(m2, LOW);
+  } else if (speed1 < (abs(m1DeadBand) * -1)) {
+    digitalWrite(m1, LOW);
+    digitalWrite(m2, HIGH);
+  } else { // else within deadband
+    digitalWrite(m1, LOW); // seeting both pins high or low will stop the motor
+    digitalWrite(m2, LOW);
+  }
+
+  analogWrite(ena, int(abs(speed1 * 255)));
+
+// ---------------Second Side of H Bridge (enb, in3 and in4)----------------
+ 
+  if (speed2 > abs(m2DeadBand)) {
+    digitalWrite(m3, HIGH);
+    digitalWrite(m4, LOW);
+  } else if (speed2 < (abs(m2DeadBand) * -1)) {
+    digitalWrite(m3, LOW);
+    digitalWrite(m4, HIGH);
+  } else { // else within deadband
+    digitalWrite(m3, LOW); // seeting both pins high or low will stop the motor
+    digitalWrite(m4, LOW);
+  }
+
+  analogWrite(enb, int(abs(speed2 * 255)));
+  
+}
+
+void relay(int relayNum, bool on) {
+  switch (relayNum) {
+    case 1:
+      if (on) {
+        digitalWrite(in1, LOW);
+      } else {
+        digitalWrite(in1, HIGH);
+      }
+      break;
+    case 2:
+      if (on) {
+        digitalWrite(in2, LOW);
+      } else {
+        digitalWrite(in2, HIGH);
+      }
+      break;
+    case 3:
+      if (on) {
+        digitalWrite(in3, LOW);
+      } else {
+        digitalWrite(in3, HIGH);
+      }
+      break;
+    case 4:
+      if (on) {
+        digitalWrite(in4, LOW);
+      } else {
+        digitalWrite(in4, HIGH);
+      }
+      break;
   }
 }
