@@ -131,14 +131,14 @@ unsigned int r_data;
 
 float speeds[2] = {0.0, 0.0};
 
-Sabertooth STs[2] = { Sabertooth(128), Sabertooth(129)};
+Sabertooth STs[3] = { Sabertooth(128), Sabertooth(129), Sabertooth(130)};
 
 void setup()  {
   setup_pwmRead();                      
   SabertoothTXPinSerial.begin(115200);
   //Serial.begin(115200);
 
-  
+  /*
   pinMode(in1, OUTPUT);
   
   pinMode(in2, OUTPUT);
@@ -154,6 +154,7 @@ void setup()  {
   pinMode(m3, OUTPUT);
   pinMode(m4, OUTPUT);
 
+  */
 
   // initalize relays by leaving them off, put at end of setup() for it to work, not after pinMode()
   digitalWrite(in1, HIGH);
@@ -180,6 +181,7 @@ void loop()  {
 
       l_data = SPEEDtoDATA(speeds[0]);
       r_data = SPEEDtoDATA(speeds[1]);
+
       
       turnOnLights = abs(gearPos) > 0.1;
 
@@ -188,7 +190,9 @@ void loop()  {
       driveRL(l_data, false);
       driveRR(r_data, true);
 
-      driveHBridge(armSpeed, 0.0, 0.1, 0.0);
+      moveArm(SPEEDtoDATA(armSpeed));
+
+      //driveHBridge(armSpeed, 0.0, 0.1, 0.0);
 
       turnOnLedLights(turnOnLights);
   }
@@ -681,4 +685,8 @@ void relay(int relayNum, bool on) {
       }
       break;
   }
+}
+
+void moveArm(unsigned int data) {
+  STs[2].motor(1, dataFilter(data));
 }
