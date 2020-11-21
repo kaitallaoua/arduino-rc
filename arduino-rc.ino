@@ -99,13 +99,14 @@ int in2 = A1;
 int in3 = A2;
 int in4 = A3;
 
+/*
 int ena = 10;
 int enb = 9;
 int m1 = 13;
 int m2 = 12;
 int m3 = 11;
 int m4 = 8;
-
+*/
 
 
 
@@ -138,7 +139,7 @@ void setup()  {
   SabertoothTXPinSerial.begin(115200);
   //Serial.begin(115200);
 
-  /*
+  
   pinMode(in1, OUTPUT);
   
   pinMode(in2, OUTPUT);
@@ -147,14 +148,15 @@ void setup()  {
   
   pinMode(in4, OUTPUT);
 
+  /*
   pinMode(ena, OUTPUT);
   pinMode(enb, OUTPUT);
   pinMode(m1, OUTPUT);
   pinMode(m2, OUTPUT);
   pinMode(m3, OUTPUT);
   pinMode(m4, OUTPUT);
-
   */
+  
 
   // initalize relays by leaving them off, put at end of setup() for it to work, not after pinMode()
   digitalWrite(in1, HIGH);
@@ -622,6 +624,7 @@ unsigned int dataFilter(unsigned int data) {
   }
 }
 
+/*
 void driveHBridge(float speed1, float speed2, float m1DeadBand, float m2DeadBand) {
 // --------------First Side of H Bridge (ena, in1 and in2)------------------
   if (speed1 > abs(m1DeadBand)) {
@@ -653,7 +656,7 @@ void driveHBridge(float speed1, float speed2, float m1DeadBand, float m2DeadBand
   analogWrite(enb, int(abs(speed2 * 255)));
   
 }
-
+*/
 void relay(int relayNum, bool on) {
   switch (relayNum) {
     case 1:
