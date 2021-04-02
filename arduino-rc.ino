@@ -99,14 +99,13 @@ int in2 = A1;
 int in3 = A2;
 int in4 = A3;
 
-/*
 int ena = 10;
 int enb = 9;
 int m1 = 13;
 int m2 = 12;
 int m3 = 11;
 int m4 = 8;
-*/
+
 
 
 
@@ -132,7 +131,7 @@ unsigned int r_data;
 
 float speeds[2] = {0.0, 0.0};
 
-Sabertooth STs[3] = { Sabertooth(128), Sabertooth(129), Sabertooth(130)};
+Sabertooth STs[2] = { Sabertooth(128), Sabertooth(129)};
 
 void setup()  {
   setup_pwmRead();                      
@@ -148,15 +147,13 @@ void setup()  {
   
   pinMode(in4, OUTPUT);
 
-  /*
   pinMode(ena, OUTPUT);
   pinMode(enb, OUTPUT);
   pinMode(m1, OUTPUT);
   pinMode(m2, OUTPUT);
   pinMode(m3, OUTPUT);
   pinMode(m4, OUTPUT);
-  */
-  
+
 
   // initalize relays by leaving them off, put at end of setup() for it to work, not after pinMode()
   digitalWrite(in1, HIGH);
@@ -183,7 +180,6 @@ void loop()  {
 
       l_data = SPEEDtoDATA(speeds[0]);
       r_data = SPEEDtoDATA(speeds[1]);
-
       
       turnOnLights = abs(gearPos) > 0.1;
 
@@ -192,9 +188,7 @@ void loop()  {
       driveRL(l_data, false);
       driveRR(r_data, true);
 
-      moveArm(SPEEDtoDATA(armSpeed));
-
-      //driveHBridge(armSpeed, 0.0, 0.1, 0.0);
+      driveHBridge(0.0, armSpeed, 0.0, 0.1);
 
       turnOnLedLights(turnOnLights);
   }
@@ -624,7 +618,6 @@ unsigned int dataFilter(unsigned int data) {
   }
 }
 
-/*
 void driveHBridge(float speed1, float speed2, float m1DeadBand, float m2DeadBand) {
 // --------------First Side of H Bridge (ena, in1 and in2)------------------
   if (speed1 > abs(m1DeadBand)) {
@@ -656,7 +649,7 @@ void driveHBridge(float speed1, float speed2, float m1DeadBand, float m2DeadBand
   analogWrite(enb, int(abs(speed2 * 255)));
   
 }
-*/
+
 void relay(int relayNum, bool on) {
   switch (relayNum) {
     case 1:
@@ -688,8 +681,4 @@ void relay(int relayNum, bool on) {
       }
       break;
   }
-}
-
-void moveArm(unsigned int data) {
-  STs[2].motor(1, dataFilter(data));
 }
